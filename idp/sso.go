@@ -223,6 +223,79 @@ func (i *IDP) DefaultRedirectSSOHandler() http.HandlerFunc {
 	}
 }
 
+// DefaultRedirectSSOHandler is the default implementation for the redirect login handler. It can be used as is, wrapped in other handlers, or replaced completely.
+func (i *IDP) DefaultRedirectLogoutHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := func() error {
+			err := r.ParseForm()
+			if err != nil {
+				return err
+			}
+			relayState := r.Form.Get("RelayState")
+			if len(relayState) > 80 {
+				return errors.New("RelayState cannot be longer than 80 characters")
+			}
+
+			samlReq := r.Form.Get("SAMLRequest")
+			// URL decoding is already performed
+			// remove base64 encoding
+			reqBytes, err := base64.StdEncoding.DecodeString(samlReq)
+			if err != nil {
+				return err
+			}
+			// Remove deflate
+			req := flate.NewReader(bytes.NewReader(reqBytes))
+			// Read the XML
+			decoder := xml.NewDecoder(req)
+			loginReq := &saml.AuthnRequest{}
+			if err = decoder.Decode(loginReq); err != nil {
+				return err
+			}
+
+			if err = i.validateRequest(loginReq, r); err != nil {
+				return err
+			}
+
+			// create saveable request
+			saveableRequest, err := model.NewAuthnRequest(loginReq, relayState)
+			if err != nil {
+				return err
+			}
+
+			// check for existing session
+			if user := i.getUserFromSession(r); user != nil {
+				return i.respond(saveableRequest, user, w, r)
+			}
+
+			// check to see if they presented a client cert
+			if user, err := i.loginWithCert(r, saveableRequest); user != nil {
+				return i.respond(saveableRequest, user, w, r)
+			} else if err != nil {
+				return err
+			}
+
+			// need to display the login form
+			data, err := proto.Marshal(saveableRequest)
+			if err != nil {
+				return err
+			}
+			id := uuid.New().String()
+			err = i.TempCache.Set(id, data)
+			if err != nil {
+				return err
+			}
+			http.Redirect(w, r, fmt.Sprintf("/ui/login.html?requestId=%s",
+				url.QueryEscape(id)), http.StatusTemporaryRedirect)
+			return nil
+		}()
+		if err != nil {
+			log.Error(err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+}
+
+
 func (i *IDP) loginWithCert(r *http.Request, authnReq *model.AuthnRequest) (*model.User, error) {
 	// check to see if they presented a client cert
 	if clientCert, err := getCertFromRequest(r); err == nil {

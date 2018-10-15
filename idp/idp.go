@@ -47,6 +47,7 @@ type IDP struct {
 	MetadataHandler        http.HandlerFunc
 	ArtifactResolveHandler http.HandlerFunc
 	RedirectSSOHandler     http.HandlerFunc
+	RedirectLogoutHandler  http.HandlerFunc
 	PasswordLoginHandler   http.HandlerFunc
 	QueryHandler           http.HandlerFunc
 	Auditor                Auditor
@@ -220,6 +221,12 @@ func (i *IDP) buildRoutes() error {
 		i.RedirectSSOHandler = i.DefaultRedirectSSOHandler()
 	}
 	r.HandlerFunc("GET", viper.GetString("sso-service-path"), i.RedirectSSOHandler)
+
+	// Handle redirect SSO requests
+	if i.RedirectLogoutHandler == nil {
+		i.RedirectLogoutHandler = i.DefaultRedirectLogoutHandler()
+	}
+	r.HandlerFunc("GET", viper.GetString("sso-logout-service-path"), i.RedirectLogoutHandler)
 
 	// Handle password logins
 	if i.PasswordLoginHandler == nil {
