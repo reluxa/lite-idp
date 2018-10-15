@@ -46,6 +46,7 @@ type IDPSSODescriptor struct {
 	ArtifactResolutionService  ArtifactResolutionService
 	NameIDFormat               string `xml:"NameIDFormat"`
 	SingleSignOnService        SingleSignOnService
+	SingleLogoutService        SingleLogoutService
 }
 
 type Service struct {
@@ -68,6 +69,11 @@ type AttributeAuthorityDescriptor struct {
 
 type SingleSignOnService struct {
 	XMLName xml.Name `xml:"urn:oasis:names:tc:SAML:2.0:metadata SingleSignOnService"`
+	Service
+}
+
+type SingleLogoutService struct {
+	XMLName xml.Name `xml:"urn:oasis:names:tc:SAML:2.0:metadata SingleLogoutService"`
 	Service
 }
 

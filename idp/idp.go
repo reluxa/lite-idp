@@ -60,6 +60,7 @@ type IDP struct {
 	artifactResolutionServiceLocation string
 	attributeServiceLocation          string
 	singleSignOnServiceLocation       string
+	singleLogoutServiceLocation       string
 	postTemplate                      *template.Template
 	sps                               map[string]*ServiceProvider
 }
@@ -112,6 +113,7 @@ func (i *IDP) configureConstants() error {
 	i.artifactResolutionServiceLocation = fmt.Sprintf("https://%s%s", serverName, viper.GetString("artifact-service-path"))
 	i.attributeServiceLocation = fmt.Sprintf("https://%s%s", serverName, viper.GetString("attribute-service-path"))
 	i.singleSignOnServiceLocation = fmt.Sprintf("https://%s%s", serverName, viper.GetString("sso-service-path"))
+	i.singleLogoutServiceLocation = fmt.Sprintf("https://%s%s", serverName, viper.GetString("sso-logout-service-path"))
 	return nil
 }
 

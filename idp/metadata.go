@@ -60,6 +60,12 @@ func (i *IDP) DefaultMetadataHandler() (http.HandlerFunc, error) {
 					Location: i.singleSignOnServiceLocation,
 				},
 			},
+			SingleLogoutService: saml.SingleLogoutService{
+				Service: saml.Service{
+					Binding:  "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
+					Location: i.singleLogoutServiceLocation,
+				},
+			},
 		},
 		AttributeAuthorityDescriptor: saml.AttributeAuthorityDescriptor{
 			ProtocolSupportEnumeration: "urn:oasis:names:tc:SAML:2.0:protocol",
