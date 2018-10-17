@@ -1,16 +1,23 @@
 
-= LITE-IDP
-
-Customizations: 
+= LITE-IDP Customizations
 
 Rudimentary implementation for HTTP-Redirect SingleLogoutService:
+
+#### What is implemented: 
+
 * metadata generation for IDP added
 * Parses LogoutRequest comming from SP
 * Response to LogoutRequest to SP's HTTP-Redirect endpoint
 * destroy user's session in cache and invalidate IDP cookie
 
-What is missing (actually a lot)
+#### What is missing (actually a lot): 
+
 * parse SingleLogoutService endpoint from SP metadata
-* in case of global logout other service providers are not notified
+* in case of global logout other service providers are to be notified and shall be logged out too
 * HTTP-POST binding for logout service on IDP side
 * support for HTTP-POST binding on SP side
+* error handling
+* non success response to logout requests
+
+
+Also the certificate based client authentication has been disabled so the browser does not ask you to present cert all the time when the login page is hit.
