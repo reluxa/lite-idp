@@ -21,3 +21,5 @@ Rudimentary implementation for HTTP-Redirect SingleLogoutService:
 
 
 Also the certificate based client authentication has been disabled so the browser does not ask you to present cert all the time when the login page is hit.
+
+Docker hub URL: https://hub.docker.com/r/reluxa/lite-idp/
