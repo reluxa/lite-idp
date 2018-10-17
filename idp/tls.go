@@ -32,7 +32,7 @@ func ConfigureTLS() (*tls.Config, error) {
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		//Some but not all operations will require a client cert
-		ClientAuth: tls.VerifyClientCertIfGiven,
+		//ClientAuth: tls.VerifyClientCertIfGiven,
 		MinVersion: tls.VersionTLS12,
 	}
 	if ca != "" {
