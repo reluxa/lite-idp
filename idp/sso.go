@@ -82,6 +82,24 @@ func (i *IDP) validateRequest(request *saml.AuthnRequest, r *http.Request) error
 	return verifySignature(r.URL.RawQuery, r.Form.Get("SigAlg"), r.Form.Get("Signature"), sp)
 }
 
+func (i *IDP) validateLogoutRequest(request *saml.LogoutRequest, r *http.Request) error {
+	// Only accept requests from registered service providers
+	if request.Issuer == "" {
+		return errors.New("request does not contain an issuer")
+	}
+	log.Infof("received logout request from %s", request.Issuer)
+	sp, ok := i.sps[request.Issuer]
+	if !ok {
+		return errors.New("request from an unregistered issuer")
+	}
+	// At this point, we're OK with the request
+	// Need to validate the signature
+	// Have to use the raw query as pointed out in the spec.
+	// https://docs.oasis-open.org/security/saml/v2.0/saml-bindings-2.0-os.pdf
+	// Line 621
+	return verifySignature(r.URL.RawQuery, r.Form.Get("SigAlg"), r.Form.Get("Signature"), sp)
+}
+
 func verifySignature(rawQuery, alg, expectedSig string, sp *ServiceProvider) error {
 	// Split up the parts
 	params := strings.Split(rawQuery, "&")
@@ -223,10 +241,11 @@ func (i *IDP) DefaultRedirectSSOHandler() http.HandlerFunc {
 	}
 }
 
-// DefaultRedirectSSOHandler is the default implementation for the redirect login handler. It can be used as is, wrapped in other handlers, or replaced completely.
+// DefaultRedirectLogoutHandler is the default implementation for the redirect logout handler. It can be used as is, wrapped in other handlers, or replaced completely.
 func (i *IDP) DefaultRedirectLogoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := func() error {
+			log.Info("DefaultRedirectLogoutHandler was called")
 			err := r.ParseForm()
 			if err != nil {
 				return err
@@ -247,45 +266,31 @@ func (i *IDP) DefaultRedirectLogoutHandler() http.HandlerFunc {
 			req := flate.NewReader(bytes.NewReader(reqBytes))
 			// Read the XML
 			decoder := xml.NewDecoder(req)
-			loginReq := &saml.AuthnRequest{}
-			if err = decoder.Decode(loginReq); err != nil {
+			logoutRequest := &saml.LogoutRequest{}
+			if err = decoder.Decode(logoutRequest); err != nil {
 				return err
 			}
 
-			if err = i.validateRequest(loginReq, r); err != nil {
+			if err = i.validateLogoutRequest(logoutRequest, r); err != nil {
 				return err
 			}
 
-			// create saveable request
-			saveableRequest, err := model.NewAuthnRequest(loginReq, relayState)
-			if err != nil {
-				return err
+			log.Info(fmt.Sprintf("%#v", logoutRequest));
+
+			//delete user from local cache
+			i.deleteUserFromSession(r);
+
+			logoutresponse := &LogoutResponse{
+				EntityID: logoutRequest.Issuer, 
+				OriginalID: logoutRequest.ID,
+				RelayState: relayState,
 			}
 
-			// check for existing session
-			if user := i.getUserFromSession(r); user != nil {
-				return i.respond(saveableRequest, user, w, r)
+			err = i.createLogoutResponseRedirect(logoutresponse, w, r);
+			if (err != nil) {
+				return err;
 			}
 
-			// check to see if they presented a client cert
-			if user, err := i.loginWithCert(r, saveableRequest); user != nil {
-				return i.respond(saveableRequest, user, w, r)
-			} else if err != nil {
-				return err
-			}
-
-			// need to display the login form
-			data, err := proto.Marshal(saveableRequest)
-			if err != nil {
-				return err
-			}
-			id := uuid.New().String()
-			err = i.TempCache.Set(id, data)
-			if err != nil {
-				return err
-			}
-			http.Redirect(w, r, fmt.Sprintf("/ui/login.html?requestId=%s",
-				url.QueryEscape(id)), http.StatusTemporaryRedirect)
 			return nil
 		}()
 		if err != nil {
@@ -350,6 +355,15 @@ func (i *IDP) getUserFromSession(r *http.Request) *model.User {
 		}
 	}
 	return nil
+}
+
+func (i *IDP) deleteUserFromSession(r *http.Request) {
+	// check for cookie to see if user has a current session
+	if cookie, err := r.Cookie(i.cookieName); err == nil {
+		// Found a session cookie
+		i.UserCache.Delete(cookie.Value); 
+		log.Infof("User has been deleted from the cache")
+	}
 }
 
 type dsaSignature struct {

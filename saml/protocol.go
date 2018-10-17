@@ -29,6 +29,11 @@ type AuthnRequest struct {
 	AssertionConsumerServiceIndex uint32   `xml:",attr"`
 }
 
+type LogoutRequest struct {
+	RequestAbstractType
+	XMLName                       xml.Name `xml:"urn:oasis:names:tc:SAML:2.0:protocol LogoutRequest"`
+}
+
 type ArtifactResolveEnvelope struct {
 	XMLName xml.Name `xml:"http://schemas.xmlsoap.org/soap/envelope/ Envelope"`
 	Body    ArtifactResolveBody

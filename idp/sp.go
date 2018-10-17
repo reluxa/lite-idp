@@ -28,6 +28,7 @@ import (
 type ServiceProvider struct {
 	EntityID                  string
 	AssertionConsumerServices []AssertionConsumerService
+	SingleLogoutServices	  []SingleLogoutService
 	Certificate               string
 	// Could be an RSA or DSA public key
 	publicKey interface{}
@@ -48,6 +49,14 @@ func (sp *ServiceProvider) parseCertificate() error {
 
 // AssertionConsumerService is a SAML assertion consumer service
 type AssertionConsumerService struct {
+	Index     uint32
+	IsDefault bool
+	Binding   string
+	Location  string
+}
+
+// SingleLogoutService is a SAML Single Logout service
+type SingleLogoutService struct {
 	Index     uint32
 	IsDefault bool
 	Binding   string
